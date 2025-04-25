@@ -1,0 +1,261 @@
+---
+title: "Bayesian Analysis of U.S. Support for Military Aid to Ukraine"
+author: "Franco Lorenzo"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+fontsize: 11pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load all model outputs in order
+source("scripts/01_data_setup.R")
+source("scripts/02_separate_model.R")
+source("scripts/03_pooled_model.R")
+source("scripts/04_hierarchical_model.R")
+source("scripts/05_predictive_analysis.R")
+source("scripts/06_plots_and_summaries.R")
+```
+
+# Introduction
+
+This report analyzes data from a February 2025 Economist/YouGov survey of 1,603 U.S. adults regarding their opinions on military aid to Ukraine. It uses Bayesian methods, specifically Gibbs sampling, to fit three models:
+
+- Separate Gaussian model (one mean per group)
+- Pooled Gaussian model (single global mean)
+- Hierarchical Gaussian model (partial pooling across groups)
+
+Additionally, it predicts the support level for a hypothetical new political group.
+
+The goal is to apply Bayesian inference carefully and discuss the strengths and limitations of these methods in a real-world setting.
+
+# Data Description
+
+The survey asked participants whether the U.S. should:
+
+- Increase Aid
+- Maintain Aid
+- Decrease Aid
+- Are Not Sure
+
+The support percentages by political affiliation are summarized as follows:
+
+| Group        | Increase Aid | Maintain Aid | Not Sure | Decrease Aid |
+|--------------|--------------|--------------|----------|--------------|
+| Democrat     | 35%           | 39%           | 16%       | 10%           |
+| Independent  | 19%           | 23%           | 26%       | 33%           |
+| Republican   | 10%           | 24%           | 21%       | 45%           |
+
+Since individual-level responses were not available, I modeled these percentages as observations with Gaussian noise, acknowledging that real-world variance might be underestimated.
+
+# Modeling Approach
+
+The analysis applied Gibbs Sampling across three different model structures:
+
+## Separate Model
+
+Each political affiliation has an independent mean support percentage, sharing a common variance across groups.
+
+```{r separate-model, echo=FALSE, fig.width=12, fig.height=4}
+par(mfrow = c(1,3))
+for (g in 1:ncol(posterior_mu)) {
+  hist(posterior_mu[,g],
+       breaks = 30,
+       main = paste("Posterior Mean:", colnames(posterior_mu)[g]),
+       xlab = "Mean Support (%)",
+       col = "lightblue",
+       border = "white")
+}
+```
+
+---
+
+## Pooled Model
+
+All responses are assumed to arise from a single global mean and variance.
+
+```{r pooled-model, echo=FALSE}
+hist(posterior_mu_pooled,
+     breaks = 30,
+     main = "Posterior Distribution (Pooled Model)",
+     xlab = "Global Mean Support (%)",
+     col = "lightcoral",
+     border = "white")
+```
+
+---
+
+## Hierarchical Model
+
+The group means are modeled as draws from a common distribution, allowing partial pooling.
+
+```{r hierarchical-model, echo=FALSE, fig.width=12, fig.height=4}
+par(mfrow = c(1,3))
+for (g in 1:ncol(posterior_mu_g)) {
+  hist(posterior_mu_g[,g],
+       breaks = 30,
+       main = paste("Posterior Mean:", colnames(posterior_mu_g)[g]),
+       xlab = "Group Mean (%)",
+       col = "lightgreen",
+       border = "white")
+}
+```
+
+---
+
+# Results
+
+## Posterior Summaries
+
+The table below summarizes the posterior mean estimates and 95% credible intervals for each model:
+
+```{r results-plot, echo=FALSE, fig.height=5}
+library(ggplot2)
+
+# Create a plot-friendly version of summary_table
+plot_data <- summary_table
+plot_data$Model <- factor(plot_data$Model, levels = rev(summary_table$Model))  # Reverse for nicer top-down order
+
+# Plot
+ggplot(plot_data, aes(x = Mean, y = Model)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_errorbarh(aes(xmin = CI_Lower, xmax = CI_Upper), height = 0.2, color = "gray40") +
+  theme_minimal(base_size = 12) +
+  labs(
+    title = "Posterior Means with 95% Credible Intervals",
+    x = "Mean Support (%)",
+    y = "Model"
+  )
+```
+
+---
+
+## Visualizations
+
+Separate Model Posteriors:
+
+```{r separate-histograms, echo=FALSE, fig.width=12, fig.height=4}
+par(mfrow = c(1, 3))  # 3 plots in a row
+for (g in 1:ncol(posterior_mu)) {
+  hist(posterior_mu[, g],
+       breaks = 30,
+       main = paste("Separate:", colnames(posterior_mu)[g]),
+       xlab = "Mean Support (%)",
+       col = "lightblue",
+       border = "white")
+}
+```
+
+---
+
+Pooled Model Posterior:
+
+```{r pooled-histogram, echo=FALSE}
+hist(posterior_mu_pooled,
+     breaks = 30,
+     main = "Pooled Model Posterior",
+     xlab = "Global Mean Support (%)",
+     col = "lightcoral",
+     border = "white")
+```
+
+---
+
+Hierarchical Model Posteriors:
+
+```{r hierarchical-histograms, echo=FALSE, fig.width=12, fig.height=4}
+par(mfrow = c(1, 3))  # layout: 3 plots in one row
+
+for (g in 1:ncol(posterior_mu_g)) {
+  hist(posterior_mu_g[, g],
+       breaks = 30,
+       main = paste("Hierarchical:", colnames(posterior_mu_g)[g]),
+       xlab = "Group Mean (%)",
+       col = "lightgreen",
+       border = "white")
+}
+```
+
+---
+
+Predictive Distribution (New Group):
+
+```{r predictive-histogram, echo=FALSE}
+hist(predictive_mu_new,
+     breaks = 30,
+     main = "Predictive Distribution: New Group",
+     xlab = "Predicted Mean Support (%)",
+     col = "lightyellow",
+     border = "gray40")
+```
+
+---
+
+# Predictive Analysis
+
+From the hierarchical model, the report derives a predictive distribution for a hypothetical new political affiliation's mean support level.
+
+The posterior mean and 95% credible interval for the new group's support level are:
+
+```{r predictive-summary, echo=FALSE, fig.height=4, fig.width=7}
+# Compute mean and interval
+pred_mean <- mean(predictive_mu_new)
+pred_ci <- quantile(predictive_mu_new, probs = c(0.025, 0.975))
+
+# Plot
+hist(predictive_mu_new,
+     breaks = 30,
+     col = "lightyellow",
+     border = "gray40",
+     main = "Predictive Mean Support for New Group",
+     xlab = "Mean Support (%)")
+
+# Add lines for mean and 95% CI
+abline(v = pred_mean, col = "blue", lwd = 2)
+abline(v = pred_ci, col = "red", lty = 2, lwd = 2)
+legend("topright",
+       legend = c("Posterior Mean", "95% Credible Interval"),
+       col = c("blue", "red"),
+       lty = c(1, 2), lwd = 2, bty = "n")
+```
+
+---
+
+# Discussion
+
+## Conclusions from the Analysis
+
+- Democrats show the highest mean support for maintaining or increasing aid to Ukraine.  
+- Independents are more divided, with a noticeable share unsure or favoring decrease.  
+- Republicans show stronger support for decreasing aid compared to other affiliations.  
+
+The hierarchical model offers a **balanced** view by borrowing strength across groups, improving estimates especially where sample sizes are small.
+
+---
+
+## Suitability of the Methods
+
+Bayesian hierarchical modeling is **highly suitable** for this situation:
+
+- It allows partial pooling.  
+- It quantifies uncertainty.  
+- It can predict for unobserved groups.  
+
+However, care must be taken because:
+
+- The small survey size and absence of raw responses reduce robustness.  
+- Real-world data might have non-Gaussian features (e.g., skewness).  
+
+---
+
+## Trust and Limitations
+
+- The model assumes normality and constant variance, which may not perfectly match real opinion distributions.  
+- Lack of individual-level data introduces unaccounted variability.  
+- Small group sample sizes make inference riskier.  
+
+Still, Bayesian hierarchical models offer the **best available structured estimation** under these limitations.

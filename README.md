@@ -30,8 +30,6 @@ We implement Gibbs sampling in R to sample from the joint posterior distribution
 - Predictive distribution for a hypothetical (6th) group
 - Posterior uncertainty comparisons across models
 
-## 📂 Project Structure
-
 
 ## 🚀 How to Run
 
@@ -45,19 +43,32 @@ We implement Gibbs sampling in R to sample from the joint posterior distribution
   install.packages(c("coda", "ggplot2"))
   ```
 
-3. Run any of the scripts from the scripts/ folder:
+3. Run the scripts from the scripts/ folder:
 
+  ```R
+  source("scripts/01_data_setup.R")
+  source("scripts/02_separate_model.R")
+  source("scripts/03_pooled_model.R")
+  source("scripts/04_hierarchical_model.R")
+  source("scripts/05_predictive_analysis.R")
+  source("scripts/06_plots_and_summaries.R")
   ```
-  source("scripts/model_hierarchical.R")
-  ```
+
+4. Knit the final report:
+
+Open `07_final_report.Rmd` and Knit to **PDF**.
 
 ## 📈 Results Preview
-- Hierarchical model shows posterior shrinkage toward the population mean
-- Predictive distribution provides reasonable estimates for a hypothetical unaffiliated group
-- MCMC diagnostics confirm proper convergence
+
+- Hierarchical model shows posterior shrinkage toward the population mean.
+- Predictive distribution provides reasonable estimates for a hypothetical unaffiliated group.
+- MCMC diagnostics confirm good convergence across samplers.
 
 ## 📚 Interpretation
-The hierarchical model provides a nuanced view of public opinion, balancing between individual group data and broader trends. It is particularly effective when working with limited or imbalanced data.
+
+The hierarchical model provides a balanced and robust perspective of public opinion by blending individual group tendencies with overall trends.
+This approach is especially effective for small or imbalanced datasets, capturing uncertainty without overfitting.
 
 ## 📝 License
+
 This project is for educational purposes and shared under the MIT License.
